@@ -3,9 +3,10 @@ import requests
 import time
 from ta.trend import macd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pytz import timezone
 from dotenv import load_dotenv
+
 load_dotenv()
 import os
 
@@ -453,7 +454,9 @@ if __name__ == "__main__":
 
     fmt = '%(asctime)s:%(filename)s:%(lineno)d:%(levelname)s:%(name)s:%(message)s'
     logging.basicConfig(level=logging.INFO, format=fmt)
-    fh = logging.FileHandler('console.log')
+    today = date.today()
+    date_log_name = today.strftime("%d/%m/%Y")
+    fh = logging.FileHandler(date_log_name +'.log')
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter(fmt))
     logger.addHandler(fh)
