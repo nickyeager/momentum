@@ -452,7 +452,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format=fmt)
     today = date.today()
     date_log_name = today.strftime("%d/%m/%Y")
-    fh = logging.FileHandler(date_log_name +'.log')
+    fh = logging.FileHandler('console.log')
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter(fmt))
     logger.addHandler(fh)
