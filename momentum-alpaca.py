@@ -236,10 +236,6 @@ def run(tickers, market_open_dt, market_close_dt):
         percentage_value = float("{:.2f}".format(percentage_value))
         print('percentage_value', percentage_value)
 
-        if (percentage_value >= take_profit ) {
-
-        }
-
         if (
             since_market_open.seconds // 60 > 15 and
             since_market_open.seconds // 60 < 60
@@ -383,6 +379,7 @@ def run(tickers, market_open_dt, market_close_dt):
                 symbol=symbol, qty=position.qty, side='sell',
                 type='market', time_in_force='day'
             )
+            api.cancel_order()
             symbols.remove(symbol)
             if len(symbols) <= 0:
                 conn.close()
@@ -450,7 +447,6 @@ if __name__ == "__main__":
     while since_market_open.seconds // 60 <= 14:
         time.sleep(1)
         since_market_open = current_dt - market_open
-
 
     fmt = '%(asctime)s:%(filename)s:%(lineno)d:%(levelname)s:%(name)s:%(message)s'
     logging.basicConfig(level=logging.INFO, format=fmt)
