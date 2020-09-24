@@ -9,10 +9,15 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 
+import logging
+
+logger = logging.getLogger()
+
 # Replace these with your API connection info from the dashboard
 base_url = os.getenv("BASE_URL")
 api_key_id = os.getenv("API_KEY_ID")
 api_secret = os.getenv("API_SECRET")
+ws_base_url = os.getenv("WS_BASE_URL")
 
 TODAY = datetime.today().strftime('%Y-%m-%d')
 YESTERDAY = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
@@ -35,10 +40,13 @@ default_stop = .95
 # How much of our portfolio to allocate to any one position
 risk = 0.001
 
+# Max take Profit
+take_profit = .0035
+
 
 def get_1000m_history_data(symbols):
     print('Getting historical data...')
-
+    logger.info('Getting historical data...')
     minute_history = {}
     c = 0
     for symbol in symbols:
@@ -51,17 +59,22 @@ def get_1000m_history_data(symbols):
                 minute_history[symbol].drop('vwap', axis=1, inplace=True)
 
             print('{}/{}'.format(c, len(symbols)))
-            print('Success.')
+            logger.info('{}/{}'.format(c, len(symbols)))
+            print('Success. Downloaded data for symbol: {}', symbol)
+            logger.info('Success. Downloaded data for symbol: {}', symbol)
         except Exception as ex:
             print(ex)
             print('Failure.')
+            logger.info('Failure: {}', ex)
     return minute_history
 
 
 def get_tickers():
     print('Getting current ticker data...')
+    logger.info('Getting current ticker data...')
     tickers = api.polygon.all_tickers()
     print('Success.')
+    logger.info('Success.')
     assets = api.list_assets()
     symbols = [asset.symbol for asset in assets if asset.tradable]
     return [ticker for ticker in tickers if (
@@ -98,9 +111,15 @@ def run(tickers, market_open_dt, market_close_dt):
 
     symbols = [ticker.ticker for ticker in tickers]
     print('Tracking {} symbols.'.format(len(symbols)))
+    logger.info('Tracking {} symbols.'.format(len(symbols)))
     minute_history = get_1000m_history_data(symbols)
 
+
     portfolio_value = float(api.get_account().portfolio_value)
+
+
+    print(api.get_account())
+    print('portfolio_value', portfolio_value)
 
     open_orders = {}
     positions = {}
@@ -160,10 +179,11 @@ def run(tickers, market_open_dt, market_close_dt):
                 partial_fills[symbol] = 0
                 open_orders[symbol] = None
 
+
+
     @conn.on(r'A$')
     async def handle_second_bar(conn, channel, data):
         symbol = data.symbol
-
         # First, aggregate 1s bars for up-to-date MACD calculations
         ts = data.start
         ts -= timedelta(seconds=ts.second, microseconds=ts.microsecond)
@@ -206,6 +226,19 @@ def run(tickers, market_open_dt, market_close_dt):
         # Now we check to see if it might be time to buy or sell
         since_market_open = ts - market_open_dt
         until_market_close = market_close_dt - ts
+
+        # Check the aggregated profit for the entire day
+        current_value = float(api.get_account().portfolio_value)
+        previous_value = float(api.get_account().last_equity)
+
+        percentage_value = ((current_value - float(api.get_account().last_equity)) / previous_value) * 100
+        percentage_value = float("{:.2f}".format(percentage_value))
+        print('percentage_value', percentage_value)
+
+        if (percentage_value >= take_profit ) {
+
+        }
+
         if (
             since_market_open.seconds // 60 > 15 and
             since_market_open.seconds // 60 < 60
@@ -276,6 +309,9 @@ def run(tickers, market_open_dt, market_close_dt):
                 print('Submitting buy for {} shares of {} at {}'.format(
                     shares_to_buy, symbol, data.close
                 ))
+                logger.info('Submitting buy for {} shares of {} at {}'.format(
+                    shares_to_buy, symbol, data.close
+                ))
                 try:
                     o = api.submit_order(
                         symbol=symbol, qty=str(shares_to_buy), side='buy',
@@ -314,6 +350,9 @@ def run(tickers, market_open_dt, market_close_dt):
                 print('Submitting sell for {} shares of {} at {}'.format(
                     position, symbol, data.close
                 ))
+                logger.info('Submitting sell for {} shares of {} at {}'.format(
+                    position, symbol, data.close
+                ))
                 try:
                     o = api.submit_order(
                         symbol=symbol, qty=str(position), side='sell',
@@ -326,7 +365,7 @@ def run(tickers, market_open_dt, market_close_dt):
                     print(e)
             return
         elif (
-            until_market_close.seconds // 60 <= 15
+            until_market_close.seconds // 60 <= 15 or percentage_value >= take_profit
         ):
             # Liquidate remaining positions on watched symbols at market
             try:
@@ -334,7 +373,9 @@ def run(tickers, market_open_dt, market_close_dt):
             except Exception as e:
                 # Exception here indicates that we have no position
                 return
-            print('Trading over, liquidating remaining position in {}'.format(
+            logger.info('Trading over, or take profit achieved. Liquidating remaining position in {}'.format(
+                symbol))
+            print('Trading over, or take profit achieved. Liquidating remaining position in {}'.format(
                 symbol)
             )
             api.submit_order(
@@ -367,7 +408,9 @@ def run(tickers, market_open_dt, market_close_dt):
     for symbol in symbols:
         symbol_channels = ['A.{}'.format(symbol), 'AM.{}'.format(symbol)]
         channels += symbol_channels
+
     print('Watching {} symbols.'.format(len(symbols)))
+    logger.info('Watching {} symbols.'.format(len(symbols)))
     run_ws(conn, channels)
 
 
@@ -407,4 +450,11 @@ if __name__ == "__main__":
         time.sleep(1)
         since_market_open = current_dt - market_open
 
+
+    fmt = '%(asctime)s:%(filename)s:%(lineno)d:%(levelname)s:%(name)s:%(message)s'
+    logging.basicConfig(level=logging.INFO, format=fmt)
+    fh = logging.FileHandler('console.log')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter(fmt))
+    logger.addHandler(fh)
     run(get_tickers(), market_open, market_close)
