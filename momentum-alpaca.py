@@ -41,10 +41,13 @@ default_stop = .95
 # How much of our portfolio to allocate to any one position
 risk = 0.001
 
-# Max take Profit
+# Max take Profit percentage. Want to lock in 0.035
 take_profit = .0035
-
 daily_take_profit = 0
+
+# We want there to be a minimum dollar profit amount
+minimum_absolute_dollar_profit = 100
+current_dollar_profit = 0
 
 
 def get_1000m_history_data(symbols):
@@ -248,7 +251,7 @@ def run(tickers, market_open_dt, market_close_dt):
             position = positions.get(symbol, 0)
             if position > 0:
                 return
-
+            # print('since open made it')
             # See how high the price went during the first 15 minutes
             lbound = market_open_dt
             ubound = lbound + timedelta(minutes=15)
@@ -322,6 +325,35 @@ def run(tickers, market_open_dt, market_close_dt):
                 except Exception as e:
                     print(e)
                 return
+        if daily_take_profit >= take_profit :
+            # daily take profit has been achieved. We can wind down our positions as quickly as possible.
+            logger.info('Take Profit', daily_take_profit)
+            # Liquidate remaining positions on watched symbols at market
+            try:
+                position = api.get_position(symbol)
+            except Exception as e:
+                # Exception here indicates that we have no position
+                return
+            logger.info('Take profit achieved. Liquidating remaining position in {}'.format(
+                symbol))
+            print('Take profit achieved. Liquidating remaining position in {}'.format(
+                symbol)
+            )
+            api.submit_order(
+                symbol=symbol, qty=position.qty, side='sell',
+                type='market', time_in_force='day'
+            )
+            api.cancel_order()
+            symbols.remove(symbol)
+            if len(symbols) <= 0:
+                conn.close()
+            conn.deregister([
+                'A.{}'.format(symbol),
+                'AM.{}'.format(symbol)
+            ])
+
+
+
         if(
             since_market_open.seconds // 60 >= 24 and
             until_market_close.seconds // 60 > 15
@@ -364,7 +396,7 @@ def run(tickers, market_open_dt, market_close_dt):
                     print(e)
             return
         elif (
-            until_market_close.seconds // 60 <= 15 or daily_take_profit >= take_profit
+            until_market_close.seconds // 60 <= 15
         ):
             logger.info('Take Profit', daily_take_profit)
             # Liquidate remaining positions on watched symbols at market
@@ -373,9 +405,9 @@ def run(tickers, market_open_dt, market_close_dt):
             except Exception as e:
                 # Exception here indicates that we have no position
                 return
-            logger.info('Trading over, or take profit achieved. Liquidating remaining position in {}'.format(
+            logger.info('Trading day over. Liquidating remaining position in {}'.format(
                 symbol))
-            print('Trading over, or take profit achieved. Liquidating remaining position in {}'.format(
+            print('Trading day over. Liquidating remaining position in {}'.format(
                 symbol)
             )
             api.submit_order(
