@@ -232,9 +232,9 @@ def run(tickers, market_open_dt, market_close_dt):
         current_value = float(api.get_account().portfolio_value)
         previous_value = float(api.get_account().last_equity)
 
-        percentage_value = ((current_value - float(api.get_account().last_equity)) / previous_value) * 100
-        percentage_value = float("{:.2f}".format(percentage_value))
-        print('percentage_value', percentage_value)
+        daily_take_profit = ((current_value - float(api.get_account().last_equity)) / previous_value) * 100
+        daily_take_profit = float("{:.3f}".format(daily_take_profit))
+        print('percentage_value', daily_take_profit)
 
         if (
             since_market_open.seconds // 60 > 15 and
@@ -362,8 +362,9 @@ def run(tickers, market_open_dt, market_close_dt):
                     print(e)
             return
         elif (
-            until_market_close.seconds // 60 <= 15 or percentage_value >= take_profit
+            until_market_close.seconds // 60 <= 15 or daily_take_profit >= take_profit
         ):
+            logger.info('Take Profit', daily_take_profit)
             # Liquidate remaining positions on watched symbols at market
             try:
                 position = api.get_position(symbol)
