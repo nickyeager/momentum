@@ -44,6 +44,8 @@ risk = 0.001
 # Max take Profit
 take_profit = .0035
 
+daily_take_profit = 0
+
 
 def get_1000m_history_data(symbols):
     print('Getting historical data...')
@@ -445,7 +447,7 @@ if __name__ == "__main__":
     # Wait until just before we might want to trade
     current_dt = datetime.today().astimezone(nyc)
     since_market_open = current_dt - market_open
-    while since_market_open.seconds // 60 <= 14:
+    while since_market_open.seconds // 60 <= 14 or daily_take_profit >= take_profit:
         time.sleep(1)
         since_market_open = current_dt - market_open
 
