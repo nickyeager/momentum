@@ -23,11 +23,7 @@ ws_base_url = os.getenv("WS_BASE_URL")
 TODAY = datetime.today().strftime('%Y-%m-%d')
 YESTERDAY = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
 
-api = tradeapi.REST(
-    base_url=base_url,
-    key_id=api_key_id,
-    secret_key=api_secret
-)
+api = tradeapi.REST()
 
 session = requests.session()
 
