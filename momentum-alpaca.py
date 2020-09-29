@@ -87,6 +87,20 @@ def get_tickers():
         ticker.todaysChangePerc >= 3.5
     )]
 
+def liquite_positions_and_orders():
+    url = "https://paper-api.alpaca.markets/v2/positions"
+    order_url = "https://paper-api.alpaca.markets/v2/orders"
+
+    payload = {}
+    headers = {
+        'APCA-API-KEY-ID': 'PKW2OS09URIGNRTL1I63',
+        'APCA-API-SECRET-KEY': 'ae4VxQeqVeWJsKVlH0QlLkY5ThsQ6MjtI7RczCLm'
+    }
+
+    response = requests.request("DELETE", url, headers=headers, data=payload)
+    print
+    orders_response = requests.request("DELETE", order_url, headers=headers, data=payload)
+    return
 
 def find_stop(current_value, minute_history, now):
     series = minute_history['low'][-100:] \
@@ -233,9 +247,9 @@ def run(tickers, market_open_dt, market_close_dt):
         current_value = float(api.get_account().portfolio_value)
         previous_value = float(api.get_account().last_equity)
 
-        daily_take_profit = ((current_value - float(api.get_account().last_equity)) / previous_value) * 100
+        daily_take_profit = ((float(current_value) - float(api.get_account().last_equity)) / previous_value) * 100
         daily_take_profit = float("{:.3f}".format(daily_take_profit))
-        print('percentage_value', daily_take_profit)
+        #print('percentage_value', daily_take_profit)
 
         if (
             since_market_open.seconds // 60 > 15 and
@@ -247,7 +261,6 @@ def run(tickers, market_open_dt, market_close_dt):
             position = positions.get(symbol, 0)
             if position > 0:
                 return
-            # print('since open made it')
             # See how high the price went during the first 15 minutes
             lbound = market_open_dt
             ubound = lbound + timedelta(minutes=15)
@@ -329,6 +342,12 @@ def run(tickers, market_open_dt, market_close_dt):
                 position = api.get_position(symbol)
             except Exception as e:
                 # Exception here indicates that we have no position
+                if len(symbols) <= 0:
+                    conn.close()
+                conn.deregister([
+                    'A.{}'.format(symbol),
+                    'AM.{}'.format(symbol)
+                ])
                 return
             logger.info('Take profit achieved. Liquidating remaining position in {}'.format(
                 symbol))
@@ -347,6 +366,7 @@ def run(tickers, market_open_dt, market_close_dt):
                 'A.{}'.format(symbol),
                 'AM.{}'.format(symbol)
             ])
+
 
 
 
