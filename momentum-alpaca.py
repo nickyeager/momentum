@@ -23,7 +23,7 @@ ws_base_url = os.getenv("WS_BASE_URL")
 TODAY = datetime.today().strftime('%Y-%m-%d')
 YESTERDAY = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
 
-print('api_secret', api_secret)
+print('POLYGON_KEY_ID', os.getenv("POLYGON_KEY_ID"))
 
 api = tradeapi.REST()
 
