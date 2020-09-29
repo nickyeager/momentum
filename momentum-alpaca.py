@@ -23,6 +23,8 @@ ws_base_url = os.getenv("WS_BASE_URL")
 TODAY = datetime.today().strftime('%Y-%m-%d')
 YESTERDAY = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
 
+print('api_secret', api_secret)
+
 api = tradeapi.REST()
 
 session = requests.session()
@@ -62,8 +64,6 @@ def get_1000m_history_data(symbols):
 
             print('{}/{}'.format(c, len(symbols)))
             logger.info('{}/{}'.format(c, len(symbols)))
-            print('Success. Downloaded data for symbol: {}', symbol)
-            logger.info('Success. Downloaded data for symbol: {}', symbol)
         except Exception as ex:
             print(ex)
             print('Failure.')
@@ -98,8 +98,9 @@ def liquite_positions_and_orders():
     }
 
     response = requests.request("DELETE", url, headers=headers, data=payload)
-    print
+    print(response)
     orders_response = requests.request("DELETE", order_url, headers=headers, data=payload)
+    print(orders_response)
     return
 
 def find_stop(current_value, minute_history, now):
@@ -337,6 +338,7 @@ def run(tickers, market_open_dt, market_close_dt):
         if daily_take_profit >= take_profit :
             # daily take profit has been achieved. We can wind down our positions as quickly as possible.
             logger.info('Take Profit', daily_take_profit)
+            liquite_positions_and_orders()
             # Liquidate remaining positions on watched symbols at market
             try:
                 position = api.get_position(symbol)
