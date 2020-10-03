@@ -1,1 +1,1 @@
-worker: python momentum-alpaca.py
+worker: python mean-regression.py
